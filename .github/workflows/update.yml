@@ -1,0 +1,87 @@
+name: Aggiorna i livelli e pubblica
+
+on:
+  schedule:
+    - cron: '15 4 * * *'    # ogni giorno alle 04:15 UTC (06:15 ora italiana estiva)
+    - cron: '15 16 * * *'   # e alle 16:15 UTC: il flusso ARPA è in tempo reale, due letture al giorno tengono lo stato fresco
+  workflow_dispatch:
+    inputs:
+      years:
+        description: >-
+          Anni da (ri)scaricare. Lasciare il default per l'aggiornamento normale; "all" una tantum per il bootstrap
+          della storia dal 2011 (una decina di minuti). Gli anni senza file vengono comunque scaricati.
+        default: 'current,previous'
+        required: false
+        type: string
+  push:
+    branches: [main]
+    paths-ignore: ['README.md', 'README.en.md', 'docs/**']
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fiumi-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Controlla l'anagrafica (segnala nuovi idrometri non a catalogo)
+        env:
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+        run: python scripts/fetch_stations.py --check
+        continue-on-error: true
+
+      - name: Scarica e aggrega i livelli (anno corrente + precedente, più gli anni mancanti)
+        env:
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+        run: python scripts/fetch_levels.py --years "${{ inputs.years || 'current,previous' }}"
+
+      - name: Scarica le finestre orarie delle piene (solo eventi nuovi)
+        env:
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+        run: python scripts/fetch_events.py
+        continue-on-error: true
+
+      - name: Costruisci site/data/
+        run: python scripts/build_data.py
+
+      # I file annuali sono versionati anche per gli anni aperti: il flusso ARPA è una finestra scorrevole di pochi mesi,
+      # quindi i giorni non salvati sparirebbero fino alla pubblicazione della serie validata. Il commit notturno è piccolo.
+      - name: Committa i dati aggiornati
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/levels-*.json data/events/*.json
+          if git diff --cached --quiet; then
+            echo "Nessun dato nuovo da committare."
+          else
+            git commit -m "Aggiorna i livelli ($(date -u +%Y-%m-%d\ %H:%M) UTC)"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="I livelli dei fiumi e dei laghi lombardi misurati dagli idrometri ARPA: stato di oggi rispetto a quindici anni di storia, magre e piene, profilo di ogni fiume da monte a valle, quante ore impiega una piena a scendere. Progetto indipendente.">
+<meta name="color-scheme" content="light dark">
+<title>Fiumi di Lombardia · livelli idrometrici ARPA</title>
+<link rel="canonical" href="https://danbas.github.io/fiumi-di-lombardia/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fiumi di Lombardia">
+<meta property="og:locale" content="it_IT">
+<meta property="og:title" content="Fiumi di Lombardia · livelli idrometrici ARPA">
+<meta property="og:description" content="Ticino, Po, Adda, Oglio, Mincio e i grandi laghi: il livello di oggi confrontato con quindici anni di misure, fiume per fiume, da monte a valle.">
+<meta property="og:url" content="https://danbas.github.io/fiumi-di-lombardia/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{"@type":"WebSite","@id":"https://danbas.github.io/fiumi-di-lombardia/#sito","url":"https://danbas.github.io/fiumi-di-lombardia/","name":"Fiumi di Lombardia","inLanguage":"it","description":"Livelli idrometrici dei fiumi e dei laghi lombardi (idrometri ARPA Lombardia): stato di oggi rispetto alla storia dal 2011, profilo di ogni fiume da monte a valle, ritardi di propagazione delle piene."},
+{"@type":"Dataset","name":"Livelli idrometrici dei fiumi e dei laghi lombardi — aggregati giornalieri e statistiche","description":"Minimo, media e massimo giornalieri del livello idrometrico per ~80 stazioni ARPA Lombardia dal 2011, percentili climatologici per giorno dell'anno e ritardi di propagazione delle piene tra stazioni consecutive. Elaborazione propria di un progetto indipendente, non affiliato ad ARPA Lombardia né a Regione Lombardia.","url":"https://danbas.github.io/fiumi-di-lombardia/","inLanguage":"it","isAccessibleForFree":true,"license":"https://github.com/danbas/fiumi-di-lombardia/blob/main/THIRD_PARTY_NOTICES.md","creator":{"@type":"Organization","name":"Fiumi di Lombardia (progetto indipendente)","url":"https://github.com/danbas/fiumi-di-lombardia"},"spatialCoverage":{"@type":"Place","name":"Lombardia, Italia"},"temporalCoverage":"2011/..","variableMeasured":["Livello idrometrico"],"isBasedOn":["https://www.dati.lombardia.it"]}
+]}
+</script>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <img class="logo" src="logo.svg" alt="" width="44" height="44">
+    <div>
+      <p class="eyebrow">Dati ARPA Lombardia · Livelli idrometrici · Fiumi e laghi</p>
+      <h1><a href="#/" class="home">Fiumi di Lombardia</a></h1>
+      <p class="lede">Il livello di oggi di ogni fiume e lago lombardo, confrontato con quindici anni di misure: magre e piene, profilo da monte a valle, quante ore impiega una piena a scendere. Progetto indipendente, non un sito ufficiale.</p>
+    </div>
+  </div>
+  <div class="today" id="today" aria-live="polite"></div>
+</header>
+
+<div class="work">
+  <aside>
+    <section class="panel" aria-labelledby="h-sum">
+      <div class="ph"><h2 id="h-sum">Oggi in Lombardia</h2><span class="hint" id="sum-when" style="margin:0"></span></div>
+      <div class="pb">
+        <div class="date-row">
+          <button class="nav" id="gprev" title="Giorno precedente" aria-label="Giorno precedente">‹</button>
+          <input type="date" id="gday" aria-label="Data">
+          <button class="nav" id="gnext" title="Giorno successivo" aria-label="Giorno successivo">›</button>
+          <button class="chip" id="gym1" title="Stesso giorno di un anno prima">un anno prima</button>
+          <button class="chip on" id="gtoday" hidden>Torna a oggi</button>
+        </div>
+        <div class="summary" id="summary"></div>
+        <p class="hint">Ogni stazione è confrontata con la distribuzione dei livelli misurati <em>nello stesso periodo dell'anno</em> in tutti gli anni disponibili: "nella norma" significa tra il 25° e il 75° percentile. Scegli una data per vedere mappa, elenco e profili com'erano quel giorno (medie giornaliere), dal 2011 a ieri.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="rivers-panel" aria-labelledby="h-rivers">
+      <div class="ph"><h2 id="h-rivers">Fiumi e laghi</h2><span class="hint" style="margin:0">da monte a valle</span><button class="chip mob-only" id="bodies-toggle" aria-expanded="false" aria-controls="bodies">Mostra l'elenco</button></div>
+      <nav class="bodies" id="bodies" aria-label="Fiumi e laghi"></nav>
+    </section>
+  </aside>
+
+  <main>
+    <section class="panel" aria-label="Mappa">
+      <div class="ph">
+        <h2 id="map-title">Mappa</h2>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="ph maptools">
+        <label class="chip osm"><input type="checkbox" id="osm"> Sfondo OpenStreetMap</label>
+        <label class="chip osm"><input type="checkbox" id="links" checked> Collegamenti schematici tra le stazioni</label>
+        <span class="hint" style="margin:0">Senza sfondo la mappa è vettoriale: confini provinciali ISTAT. I collegamenti uniscono in linea retta le stazioni consecutive di uno stesso fiume, non seguono l'alveo.</span>
+      </div>
+      <div id="map" role="region" aria-label="Mappa della Lombardia con gli idrometri"></div>
+    </section>
+
+    <section class="panel" id="detail" aria-live="polite">
+      <div class="pb"><div class="empty">Scegli un fiume, un lago o una stazione dall'elenco o dalla mappa.</div></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-about">
+      <div class="ph"><h2 id="h-about">Come leggere i dati</h2></div>
+      <div class="pb about">
+        <p><strong>Livello idrometrico</strong>: altezza dell'acqua in centimetri rispetto allo <em>zero idrometrico</em> della stazione, un riferimento convenzionale diverso per ogni idrometro. Per questo i valori possono essere negativi e non si confrontano tra stazioni diverse: ha senso confrontare una stazione con la sua stessa storia, che è quello che fa questo sito.</p>
+        <p><strong>Percentile del giorno</strong>: la posizione del livello di oggi nella distribuzione dei livelli misurati nella stessa finestra di ±15 giorni del calendario in tutti gli anni disponibili. Sotto il 5° percentile è una <em>magra severa</em>, sopra il 95° un livello <em>molto alto</em>. Non è una soglia di allerta: per le soglie ufficiali fare riferimento ad ARPA e alla Protezione civile.</p>
+        <p><strong>Ritardo della piena</strong>: per le stazioni consecutive di uno stesso fiume, lo spostamento temporale che rende più simili le due onde di piena (correlazione tra le serie orarie) nelle maggiori piene registrate. È una statistica sulle piene passate (mediana e intervallo tra primo e terzo quartile), non una previsione idrologica: ogni piena ha una sua dinamica, e in caso di emergenza contano solo i bollettini e le allerte ufficiali.</p>
+        <p><strong>Orari</strong>: gli orari delle misure ARPA sono in ora solare (CET) tutto l'anno e indicano la fine dell'intervallo di rilevazione; d'estate sono quindi un'ora indietro rispetto all'orologio. Le stazioni con una storia troppo breve per un confronto statistico compaiono come "nessun dato" finché non accumulano almeno due anni di misure.</p>
+        <p><strong>Fonte</strong>: ARPA Lombardia, via <a href="https://www.dati.lombardia.it" rel="noopener">Open Data Regione Lombardia</a> (licenza <a href="https://creativecommons.org/publicdomain/zero/1.0/deed.it" rel="noopener">CC0 1.0</a>; i dataset citano come attribuzione «ARPA Lombardia»). Le serie fino all'anno precedente sono validate; i mesi più recenti provengono dal flusso in tempo reale e sono provvisori. Il sito salva ogni notte i giorni nuovi, così la storia resta continua anche quando il portale regionale non espone più i mesi passati. Codice e dati elaborati su <a href="https://github.com/danbas/fiumi-di-lombardia" rel="noopener">GitHub</a> (MIT).</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="foot">
+  <span>Fiumi di Lombardia · progetto indipendente, non affiliato ad ARPA Lombardia né a Regione Lombardia</span>
+  <span>Dati: ARPA Lombardia (CC0 1.0) · Confini: ISTAT via openpolis (CC BY 4.0) · Sfondo mappa: © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors (ODbL, solo se attivato) · Leaflet (BSD-2), Chart.js (MIT), IBM Plex (OFL) · <a href="https://github.com/danbas/fiumi-di-lombardia/blob/main/THIRD_PARTY_NOTICES.md" rel="noopener">note complete</a></span>
+</footer>
+
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/chart.umd.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
