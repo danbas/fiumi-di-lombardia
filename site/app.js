@@ -114,7 +114,7 @@
       for (const b of list) {
         const cur = state.sel && state.sel.kind === b.kind && state.sel.id === b.id;
         const match = !state.filter || b.stations.some((sid) => statusOf(sid).cls === state.filter);
-        const line = b.stations.map((sid, i) => `${i ? '<b></b>' : ''}<i class="c-${statusOf(sid).cls}" title="${esc(st(sid).name)}"></i>`).join('');
+        const line = b.stations.map((sid, i) => { const o = statusOf(sid); return `${i ? '<b></b>' : ''}<i class="c-${o.cls}" data-tip="${esc(st(sid).name)} · ${fmtCm(o.value)} · ${CLS[o.cls]}"></i>`; }).join('');
         html += `<button class="body${match ? '' : ' dim'}" data-kind="${b.kind}" data-id="${b.id}" aria-current="${cur}">
           <span class="nm">${esc(b.name)}</span><span class="cnt">${b.stations.length} ${b.stations.length === 1 ? 'staz.' : 'staz.'}</span><span class="line">${line}</span></button>`;
       }
@@ -124,9 +124,15 @@
   }
 
   // ---------- mappa ----------
-  let map, tiles, markers = {}, lines = [], provLayer;
+  let map, tiles, markers = {}, lines = [], provLayer, halo = null, label = null, lastFocus = null;
   function initMap() {
     map = L.map('map', { zoomSnap: 0.5, attributionControl: true, scrollWheelZoom: false });
+    // la rotella zooma solo dopo un clic sulla mappa (e finché il mouse resta sopra): così lo scroll della pagina non
+    // viene catturato da chi vuole soltanto passare oltre; + / − e doppio clic funzionano sempre
+    const mapEl = $('#map');
+    mapEl.addEventListener('click', () => { map.scrollWheelZoom.enable(); mapEl.classList.add('wheel'); });
+    mapEl.addEventListener('mouseleave', () => { map.scrollWheelZoom.disable(); mapEl.classList.remove('wheel'); });
+    map.on('focus', () => map.scrollWheelZoom.enable());
     map.attributionControl.setPrefix('');
     map.attributionControl.addAttribution('Confini: ISTAT · Dati: ARPA Lombardia');
     tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' });
@@ -175,6 +181,29 @@
       } else markers[sid].setStyle(opt);
       if (selected) markers[sid].bringToFront();
     });
+    focusSelection();
+  }
+  // anello ed etichetta fissa sulla stazione selezionata, e mappa centrata sulla selezione
+  function focusSelection() {
+    if (halo) { map.removeLayer(halo); halo = null; }
+    if (label) { map.removeLayer(label); label = null; }
+    if (!state.sel) { lastFocus = null; return; }
+    if (state.sel.kind === 'station') {
+      const s = st(state.sel.id);
+      halo = L.circleMarker([s.lat, s.lng], { radius: 18, color: css('--' + statusOf(state.sel.id).cls), weight: 3, opacity: .9, fill: false, interactive: false, className: 'halo' }).addTo(map);
+      label = L.tooltip({ permanent: true, direction: 'top', offset: [0, -14], className: 'st pin', interactive: false }).setLatLng([s.lat, s.lng]).setContent(esc(s.name)).addTo(map);
+      const key = 'station:' + state.sel.id;
+      if (key !== lastFocus) map.flyTo([s.lat, s.lng], Math.max(map.getZoom(), 10), { duration: .8 });
+      lastFocus = key;
+    } else {
+      const b = bodyById(state.sel.kind, state.sel.id);
+      const key = state.sel.kind + ':' + state.sel.id;
+      if (key !== lastFocus && b.stations.length) {
+        const bounds = L.latLngBounds(b.stations.map((sid) => [st(sid).lat, st(sid).lng]));
+        map.flyToBounds(bounds.pad(0.4), { maxZoom: 11, duration: .8 });
+      }
+      lastFocus = key;
+    }
   }
 
   // ---------- routing ----------

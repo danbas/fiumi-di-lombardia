@@ -249,8 +249,11 @@ def main() -> None:
             index[key].append({k: v for k, v in body.items() if k != 'stations'} | {'stations': ids})
             log(f'{body["name"]}: {len(ids)} stazioni')
 
+    pairs = {f'{a["id"]}-{b["id"]}' for r in cat['rivers'] for a, b in zip(r['stations'], r['stations'][1:])}
     for path in sorted(glob.glob(os.path.join(DATA_DIR, 'events', '*.json'))):
         ev = read_json(path)
+        if f'{ev["up"]}-{ev["down"]}' not in pairs:      # coppia non più consecutiva nel catalogo (file orfano)
+            continue
         index['lags'][f'{ev["up"]}-{ev["down"]}'] = lag_stats(ev) | {'river': ev['river'], 'up': ev['up'], 'down': ev['down']}
     # coppie in cui la propagazione non ha senso (un lago in mezzo): dichiarate nel catalogo con "lag": false
     for r in cat['rivers']:
