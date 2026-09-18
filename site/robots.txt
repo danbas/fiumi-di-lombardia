@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://danbas.github.io/fiumi-di-lombardia/sitemap.xml

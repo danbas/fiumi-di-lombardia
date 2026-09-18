@@ -19,7 +19,7 @@ Tutte le statistiche sono calcolate qui, una volta per notte: il browser disegna
 import base64, datetime as dt, glob, math, os, struct, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (DATA_DIR, FIRST_YEAR, OPEN_DIR, SITE_DATA, load_catalog, load_stations, log,  # noqa: E402
+from common import (DATA_DIR, FIRST_YEAR, OPEN_DIR, SITE_DATA, SITE_URL, load_catalog, load_stations, log,  # noqa: E402
                     now_iso, plausible, read_json, write_json)
 
 CLIM_WINDOW = 15       # ±giorni attorno al giorno dell'anno per la climatologia
@@ -276,6 +276,12 @@ def main() -> None:
     write_json(os.path.join(SITE_DATA, 'recent.json'), {'generated': recent.get('generated'), 'hourly': compact})
     size = os.path.getsize(os.path.join(SITE_DATA, 'index.json')) // 1024
     log(f'index.json: {len(index["stations"])} stazioni, {size} KB; {len(index["lags"])} coppie con ritardo')
+    # sitemap per i motori di ricerca: la pagina è una sola (le viste sono in hash, invisibili ai crawler),
+    # il lastmod dice a Google che i contenuti cambiano ogni giorno
+    with open(os.path.join(SITE_DATA, '..', 'sitemap.xml'), 'w', encoding='utf-8') as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                f'  <url>\n    <loc>{SITE_URL}</loc>\n    <lastmod>{dt.date.today().isoformat()}</lastmod>\n'
+                '    <changefreq>daily</changefreq>\n  </url>\n</urlset>\n')
 
 
 if __name__ == '__main__':

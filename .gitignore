@@ -2,3 +2,4 @@ site/data/
 data/open/
 __pycache__/
 .DS_Store
+site/sitemap.xml

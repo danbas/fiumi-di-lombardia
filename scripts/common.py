@@ -5,6 +5,7 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 DATA_DIR = os.path.join(ROOT, 'data')
 OPEN_DIR = os.path.join(DATA_DIR, 'open')
 SITE_DATA = os.path.join(ROOT, 'site', 'data')
+SITE_URL = 'https://danbas.github.io/fiumi-di-lombardia/'   # usato nella sitemap
 
 BASE = 'https://www.dati.lombardia.it/resource/'
 DS_STATIONS = 'nf78-nj6b'   # Stazioni Idro Nivo Meteorologiche (anagrafica di tutti i sensori)
