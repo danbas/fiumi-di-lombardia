@@ -30,9 +30,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -58,6 +58,10 @@ jobs:
 
       # I file annuali sono versionati anche per gli anni aperti: il flusso ARPA è una finestra scorrevole di pochi mesi,
       # quindi i giorni non salvati sparirebbero fino alla pubblicazione della serie validata. Il commit notturno è piccolo.
+      # Il commit va fatto sopra l'ULTIMO main, non sul commit da cui è partito il run: un re-run di un run vecchio,
+      # o un push fatto nel frattempo, farebbero altrimenti rifiutare il push ("fetch first"). I dati prodotti da questo
+      # run vengono messi da parte, il ramo riallineato a origin/main e i file riapplicati tali e quali (gli aggregati
+      # giornalieri sono ricalcolati da zero a ogni run, quindi la versione appena scaricata è quella buona).
       - name: Committa i dati aggiornati
         run: |
           git config user.name "github-actions[bot]"
@@ -65,10 +69,28 @@ jobs:
           git add data/levels-*.json data/events/*.json
           if git diff --cached --quiet; then
             echo "Nessun dato nuovo da committare."
-          else
-            git commit -m "Aggiorna i livelli ($(date -u +%Y-%m-%d\ %H:%M) UTC)"
-            git push
+            exit 0
           fi
+          git stash push -- data/levels-*.json data/events/*.json           # i file sono già in index, anche quelli nuovi
+          esito=1
+          for tentativo in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            git checkout 'stash@{0}' -- data/
+            git add data/levels-*.json data/events/*.json
+            if git diff --cached --quiet; then
+              echo "Nessun dato nuovo rispetto a origin/main."
+              esito=0; break
+            fi
+            git commit -m "Aggiorna i livelli ($(date -u +%Y-%m-%d\ %H:%M) UTC)"
+            if git push origin HEAD:main; then
+              esito=0; break
+            fi
+            echo "Push rifiutato (main è cambiato nel frattempo), tentativo $tentativo di 3"
+            sleep 20
+          done
+          git stash drop
+          exit $esito
 
       - uses: actions/configure-pages@v5
 
