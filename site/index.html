@@ -31,6 +31,7 @@
 <link rel="icon" type="image/png" sizes="48x48" href="logo-48.png">
 <link rel="icon" type="image/png" sizes="192x192" href="logo-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<script>try{var t=localStorage.getItem("fiumi-lomb-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="vendor/leaflet.css">
 <link rel="stylesheet" href="style.css">
@@ -46,7 +47,14 @@
       <p class="lede">Il livello di oggi di ogni fiume e lago lombardo, confrontato con quindici anni di misure: magre e piene, profilo da monte a valle, quante ore impiega una piena a scendere. Progetto indipendente, non un sito ufficiale.</p>
     </div>
   </div>
-  <div class="today" id="today" aria-live="polite"></div>
+  <div class="side">
+    <div class="seg theme" role="group" aria-label="Tema chiaro o scuro" id="theme">
+      <button type="button" data-theme="auto" title="Segue le impostazioni del sistema">Auto</button>
+      <button type="button" data-theme="light">Chiaro</button>
+      <button type="button" data-theme="dark">Scuro</button>
+    </div>
+    <div class="today" id="today" aria-live="polite"></div>
+  </div>
 </header>
 
 <div class="work">

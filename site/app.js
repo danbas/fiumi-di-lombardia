@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   const $ = (s, el) => (el || document).querySelector(s);
+  const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
   const MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
   const MON3 = MONTHS.map((m) => m.slice(0, 3));
   const CLS = {
@@ -152,9 +153,16 @@
     renderLines();
     renderMarkers();
   }
+  function recolor() {
+    if (!map) return;
+    renderMarkers(); renderLines();
+    if (provLayer) provLayer.setStyle({ color: css('--map-line'), fillColor: css('--map-fill') });
+    renderDetail();
+  }
   function applyOsm() {
     if (state.osm) { tiles.addTo(map); tiles.bringToBack(); } else map.removeLayer(tiles);
     if (provLayer) provLayer.setStyle({ fillOpacity: state.osm ? 0 : 1 });
+    if (Object.keys(markers).length) renderMarkers();
   }
   function renderLines() {
     lines.forEach((l) => map.removeLayer(l)); lines = [];
@@ -171,8 +179,12 @@
       const s = st(sid), o = statusOf(sid);
       const selected = state.sel && ((state.sel.kind === 'station' && state.sel.id === sid) || (state.sel.kind !== 'station' && state.sel.id === s.body));
       const dim = state.filter && o.cls !== state.filter;
-      const opt = { radius: selected ? 9 : (s.kind === 'lake' ? 7 : 6), color: selected ? css('--ink') : css('--surface'), weight: selected ? 2 : 1.5,
-        fillColor: css('--' + o.cls), fillOpacity: dim ? .25 : .95, opacity: dim ? .3 : 1 };
+      // sullo sfondo OSM (chiaro e pieno di verdi e azzurri) il pallino ha bisogno di un bordo scuro e di un raggio in più;
+      // sulla mappa vettoriale basta il bordo color superficie
+      const osm = state.osm;
+      const opt = { radius: (selected ? 9 : (s.kind === 'lake' ? 7 : 6)) + (osm ? 1 : 0),
+        color: selected ? css('--ink') : (osm ? '#1f2933' : css('--surface')), weight: selected ? 2 : (osm ? 2 : 1.5),
+        fillColor: css('--' + o.cls), fillOpacity: dim ? .4 : .95, opacity: dim ? .45 : 1 };
       if (!markers[sid]) {
         const m = L.circleMarker([s.lat, s.lng], opt).addTo(map);
         m.bindTooltip(() => { const q = statusOf(sid); return `<b>${esc(s.name)}</b>${esc(bodyOf(sid).name)}<br><span class="v">${fmtCm(q.value)}</span> · ${CLS[q.cls]}${state.day ? ' · media del giorno' : ''}`; }, { className: 'st', direction: 'top', offset: [0, -6] });
@@ -436,7 +448,17 @@
     $('#gym1').addEventListener('click', () => { const d = state.day || TODAY; setDay((+d.slice(0, 4) - 1) + d.slice(4)); });
     window.addEventListener('hashchange', route);
     route();
-    if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { renderMarkers(); renderLines(); if (provLayer) provLayer.setStyle({ color: css('--map-line'), fillColor: css('--map-fill') }); renderDetail(); });
+    // tema: 'auto' segue il sistema (nessun attributo), 'light'/'dark' forzano via data-theme (vedi style.css)
+    const themeBtns = $$('#theme button');
+    const applyTheme = (t, save) => {
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else { t = 'auto'; delete document.documentElement.dataset.theme; }
+      themeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.theme === t)));
+      if (save) { try { if (t === 'auto') localStorage.removeItem('fiumi-lomb-theme'); else localStorage.setItem('fiumi-lomb-theme', t); } catch (e) { /* ignore */ } }
+      recolor();
+    };
+    themeBtns.forEach((b) => b.addEventListener('click', () => applyTheme(b.dataset.theme, true)));
+    applyTheme(document.documentElement.dataset.theme || 'auto', false);
+    if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', recolor);
   }
   init().catch((e) => { $('#detail').innerHTML = `<div class="pb"><div class="empty">Dati non disponibili (${esc(e.message)}). Se stai aprendo il file in locale, servi la cartella con un piccolo server web.</div></div>`; });
 })();
